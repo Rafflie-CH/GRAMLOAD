@@ -1,158 +1,194 @@
+// pages/index.js
 import { useState } from "react";
+import Head from "next/head";
+import Image from "next/image";
 
 export default function Home() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
 
   const handleDownload = async () => {
-    if (!url.trim()) {
-      setError("URL tidak boleh kosong.");
-      return;
-    }
+    if (!url) return;
     setLoading(true);
     setError("");
     setResult(null);
 
     try {
-      const response = await fetch(`/api/igdownload?url=${encodeURIComponent(url)}`);
-      if (!response.ok) throw new Error("Gagal mengambil data.");
-      const data = await response.json();
-      setResult(data);
+      const res = await fetch(`/api/igdownload?url=${encodeURIComponent(url)}`);
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        throw new Error(data.error || "Gagal mengambil data");
+      }
+
+      setResult(data.results || data);
     } catch (err) {
-      setError("Terjadi kesalahan saat memproses link.");
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="container">
-      {/* Logo */}
-      <div className="flex justify-center mb-4">
-        <img src="/logo-ig.png" alt="Logo" className="h-14" />
-      </div>
+  const triggerDownload = async (fileUrl, filename) => {
+    try {
+      const response = await fetch(fileUrl);
+      const blob = await response.blob();
+      const link = document.createElement("a");
+      link.href = window.URL.createObjectURL(blob);
+      link.download = filename;
+      link.click();
+      window.URL.revokeObjectURL(link.href);
+    } catch (e) {
+      alert("Gagal mengunduh file.");
+    }
+  };
 
-      {/* Title */}
-      <h1>InstaLoad BY RAFZ</h1>
-      <p className="text-center text-gray-600 mb-6">
-        Instagram Video, Reels & Stories Downloader
-      </p>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-pink-500 via-purple-600 to-indigo-700 flex flex-col items-center text-white">
+      <Head>
+        <title>IGLoad by RAFZ - Instagram Downloader</title>
+        <meta
+          name="description"
+          content="Download Reels, Story, dan Post Instagram gratis tanpa login."
+        />
+      </Head>
+
+      {/* Header */}
+      <header className="text-center py-6">
+        <h1 className="text-4xl font-extrabold">IGLoad by RAFZ</h1>
+        <p className="mt-2">Download Instagram Reels, Stories, dan Post dengan mudah</p>
+      </header>
 
       {/* Input */}
-      <input
-        type="text"
-        placeholder="Tempelkan URL Instagram di sini..."
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-      />
-      <button onClick={handleDownload} disabled={loading}>
-        {loading ? "Memproses..." : "Download"}
-      </button>
-
-      {/* Error */}
-      {error && <p className="text-red-500 text-center mt-4">{error}</p>}
-
-      {/* Hasil */}
-      {result && (
-        <div className="mt-6">
-          {/* Info konten */}
-          <div className="text-center mb-2">
-            <span className="bg-pink-600 text-white px-3 py-1 rounded-full text-sm">
-              {result.type === "story"
-                ? "📖 Story"
-                : result.type === "reels"
-                ? "🎬 Reels"
-                : "📷 Postingan"}
-            </span>
-          </div>
-
-          {/* Foto multiple */}
-          {result.images && result.images.length > 0 && (
-            <div className="overflow-x-auto flex space-x-4 p-2">
-              {result.images.map((img, idx) => (
-                <img
-                  key={idx}
-                  src={img}
-                  alt={`image-${idx}`}
-                  className="rounded-lg shadow-md w-64 flex-shrink-0"
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Video */}
-          {result.videos && result.videos.length > 0 && (
-            <div className="mt-4">
-              {result.videos.map((vid, idx) => (
-                <video
-                  key={idx}
-                  controls
-                  className="mt-3 rounded-lg shadow-md w-full"
-                  src={vid}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Audio */}
-          {result.audio && (
-            <div className="mt-4 text-center">
-              <a
-                href={result.audio}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg"
-              >
-                🎵 Download Audio
-              </a>
-            </div>
-          )}
-
-          {/* Caption */}
-          {result.caption && (
-            <p className="mt-4 text-center text-gray-800 italic">
-              “{result.caption}”
-            </p>
-          )}
+      <main className="flex flex-col items-center w-full max-w-xl px-4">
+        <div className="flex w-full gap-2">
+          <input
+            type="text"
+            placeholder="Tempel link Instagram..."
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            className="flex-1 p-3 rounded-xl text-black"
+          />
+          <button
+            onClick={handleDownload}
+            disabled={loading}
+            className="bg-pink-600 hover:bg-pink-700 px-4 py-3 rounded-xl font-bold"
+          >
+            {loading ? "Loading..." : "Download"}
+          </button>
         </div>
-      )}
 
-      {/* Produk lain */}
-      <div className="mt-8">
-        <h2 className="text-lg font-semibold mb-2">🔥 Coba produk kami yang lain:</h2>
-        <ul className="list-disc ml-6 space-y-2">
-          <li>
-            <a
-              href="https://tikload.rafzhost.xyz"
-              className="text-purple-600 font-semibold hover:underline"
-            >
-              🎵 TikLoad – TikTok Downloader
-            </a>
-          </li>
-          <li>
-            <span className="text-gray-700">
-              📷 InstaLoad – Instagram Downloader (Anda di sini)
-            </span>
-          </li>
-        </ul>
-      </div>
+        {/* Error */}
+        {error && <p className="text-red-300 mt-4">{error}</p>}
+
+        {/* Preview */}
+        {result && (
+          <div className="mt-6 bg-white text-black p-4 rounded-2xl w-full">
+            <h2 className="font-bold text-lg text-center mb-4">Hasil</h2>
+
+            {/* Judul & tipe posting */}
+            {result.title && (
+              <p className="text-center font-semibold">📌 {result.title}</p>
+            )}
+            {result.type && (
+              <p className="text-center text-sm text-gray-600">
+                Jenis: {result.type}
+              </p>
+            )}
+
+            {/* Foto (carousel jika banyak) */}
+            {result.images?.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {result.images.map((img, i) => (
+                  <Image
+                    key={i}
+                    src={img}
+                    alt={`foto-${i}`}
+                    width={600}
+                    height={400}
+                    className="rounded-xl mx-auto"
+                  />
+                ))}
+                <button
+                  className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-xl text-white font-semibold w-full"
+                  onClick={() =>
+                    result.images.forEach((img, i) =>
+                      triggerDownload(img, `RAFZ-IGLOAD-IMG-${i + 1}.jpg`)
+                    )
+                  }
+                >
+                  Unduh Foto
+                </button>
+              </div>
+            )}
+
+            {/* Video */}
+            {result.videos?.length > 0 && (
+              <div className="mt-4 space-y-2">
+                <video
+                  controls
+                  src={result.videos[0]}
+                  className="w-full rounded-xl"
+                />
+                <button
+                  className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl text-white font-semibold w-full"
+                  onClick={() =>
+                    triggerDownload(result.videos[0], `RAFZ-IGLOAD-VIDEO.mp4`)
+                  }
+                >
+                  Unduh Video
+                </button>
+              </div>
+            )}
+
+            {/* Audio */}
+            {result.audio && (
+              <div className="mt-4 space-y-2">
+                <audio controls src={result.audio} className="w-full" />
+                <button
+                  className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-xl text-white font-semibold w-full"
+                  onClick={() =>
+                    triggerDownload(result.audio, `RAFZ-IGLOAD-AUDIO.mp3`)
+                  }
+                >
+                  Unduh Audio
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
 
       {/* Footer */}
-      <div className="footer">
-        <p className="mt-6">
-          Made with ❤️ by <span className="font-semibold">RAFZ</span>
+      <footer className="mt-auto py-6 text-center text-sm text-gray-200">
+        <div className="flex justify-center items-center gap-2">
+          <a
+            href="https://wa.me/6281234567890"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 hover:text-green-300"
+          >
+            <Image src="/whatsapp.png" width={20} height={20} alt="wa" />
+            Saluran WhatsApp
+          </a>
+          <span>|</span>
+          <a
+            href="https://www.tikwm.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 hover:text-blue-300"
+          >
+            <Image src="/tikwm.png" width={20} height={20} alt="tikwm" />
+            TIKWM (for API)
+          </a>
+        </div>
+
+        <p className="mt-2">
+          Made with ❤️ by RAFZ | Coba juga produk kami yang lain 🚀
         </p>
-        <a
-          href="https://whatsapp.com/channel/0029Vb6dhS29RZAV6wpMYj3W"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block mt-2"
-        >
-          📢 Saluran WhatsApp Kami
-        </a>
-      </div>
+      </footer>
     </div>
   );
 }

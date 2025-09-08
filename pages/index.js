@@ -1,7 +1,6 @@
 import { useState } from "react";
 import Head from "next/head";
-import { FaWhatsapp, FaTiktok } from "react-icons/fa";
-import { FaInstagram } from "react-icons/fa6";
+import { FaWhatsapp, FaTiktok, FaInstagram } from "react-icons/fa";
 
 export default function Home() {
   const [url, setUrl] = useState("");

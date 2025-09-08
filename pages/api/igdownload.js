@@ -1,67 +1,40 @@
+// pages/api/igdownload.js
 import axios from "axios";
-import * as cheerio from "cheerio";
-import CryptoJS from "crypto-js";
 
 export default async function handler(req, res) {
-  try {
-    const { url } = req.query;
+  const { url } = req.query;
+  if (!url) return res.status(400).json({ error: "Missing url" });
 
-    if (!url) {
-      return res.status(400).json({ error: "Missing url parameter" });
-    }
+  // Daftar API cadangan (bisa ditambah kalau mau)
+  const apis = [
+    (u) => `https://snapinsta.app/api?url=${encodeURIComponent(u)}`,
+    (u) => `https://saveig.app/api?url=${encodeURIComponent(u)}`,
+    (u) => `https://downloadgram.org/api?url=${encodeURIComponent(u)}`,
+  ];
 
-    // Step 1: Ambil halaman utama untuk ambil token
-    const rynn = await axios.get("https://allinonedownloader.com/in/", {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116 Safari/537.36",
-      },
-    });
+  let lastError = null;
 
-    if (!rynn.data) {
-      throw new Error("Gagal mengambil halaman downloader");
-    }
+  for (let i = 0; i < apis.length; i++) {
+    const apiUrl = apis[i](url);
+    try {
+      const response = await axios.get(apiUrl, { timeout: 8000 });
 
-    const $ = cheerio.load(rynn.data);
-    const token = $('input[name="token"]').attr("value");
-
-    if (!token) {
-      throw new Error("Token tidak ditemukan, kemungkinan layout berubah");
-    }
-
-    // Step 2: Encrypt URL dengan AES
-    const key = CryptoJS.enc.Utf8.parse("8080808080808080");
-    const iv = CryptoJS.enc.Utf8.parse("8080808080808080");
-
-    const encrypted = CryptoJS.AES.encrypt(url, key, {
-      iv,
-      mode: CryptoJS.mode.CBC,
-      padding: CryptoJS.pad.Pkcs7,
-    }).toString();
-
-    // Step 3: Kirim request untuk download link
-    const response = await axios.post(
-      "https://allinonedownloader.com/system/action.php",
-      new URLSearchParams({
-        token: token,
-        data: encrypted,
-      }),
-      {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116 Safari/537.36",
-        },
+      // cek apakah respons ada data media
+      if (response.data && (response.data.media || response.data.result)) {
+        return res.status(200).json({
+          source: apiUrl,
+          results: response.data.media || response.data.result,
+        });
       }
-    );
-
-    if (!response.data) {
-      throw new Error("Response kosong dari server downloader");
+    } catch (err) {
+      lastError = err;
+      console.warn(`API ${i + 1} gagal:`, err.message);
+      continue; // coba API berikutnya
     }
-
-    res.status(200).json(response.data);
-  } catch (err) {
-    console.error("IG Downloader error:", err.message);
-    res.status(500).json({ error: err.message });
   }
+
+  return res.status(500).json({
+    error: "Semua API gagal dipanggil",
+    detail: lastError?.message || "unknown error",
+  });
 }

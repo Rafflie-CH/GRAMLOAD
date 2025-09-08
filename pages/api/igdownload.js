@@ -1,91 +1,67 @@
 import axios from "axios";
-import cheerio from "cheerio";
-import FormData from "form-data";
+import * as cheerio from "cheerio";
 import CryptoJS from "crypto-js";
 
 export default async function handler(req, res) {
-  const { url } = req.query;
-
-  if (!url) {
-    return res.status(400).json({ error: "URL diperlukan" });
-  }
-
   try {
-    // daftar platform yang didukung (fokus ke IG)
-    const SUPPORTED = [
-      /^https?:\/\/(www\.)?instagram\.com\/reel\/.+/i,
-      /^https?:\/\/(www\.)?instagram\.com\/stories\/.+/i,
-      /^https?:\/\/(www\.)?instagram\.com\/p\/.+/i,
-    ];
+    const { url } = req.query;
 
-    if (!SUPPORTED.some((r) => r.test(url))) {
-      return res.status(400).json({ error: "Hanya mendukung Instagram reels, stories, dan postingan." });
+    if (!url) {
+      return res.status(400).json({ error: "Missing url parameter" });
     }
 
-    // ambil token
-    const rynn = await axios.get("https://allinonedownloader.com/in/");
+    // Step 1: Ambil halaman utama untuk ambil token
+    const rynn = await axios.get("https://allinonedownloader.com/in/", {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116 Safari/537.36",
+      },
+    });
+
+    if (!rynn.data) {
+      throw new Error("Gagal mengambil halaman downloader");
+    }
+
     const $ = cheerio.load(rynn.data);
     const token = $('input[name="token"]').attr("value");
 
-    // enkripsi url
-    const key = CryptoJS.enc.Hex.parse(token);
-    const iv = CryptoJS.enc.Hex.parse("afc4e290725a3bf0ac4d3ff826c43c10");
+    if (!token) {
+      throw new Error("Token tidak ditemukan, kemungkinan layout berubah");
+    }
+
+    // Step 2: Encrypt URL dengan AES
+    const key = CryptoJS.enc.Utf8.parse("8080808080808080");
+    const iv = CryptoJS.enc.Utf8.parse("8080808080808080");
+
     const encrypted = CryptoJS.AES.encrypt(url, key, {
       iv,
-      padding: CryptoJS.pad.ZeroPadding,
-    });
+      mode: CryptoJS.mode.CBC,
+      padding: CryptoJS.pad.Pkcs7,
+    }).toString();
 
-    const form = new FormData();
-    form.append("url", url);
-    form.append("token", token);
-    form.append("urlhash", encrypted.toString());
-
-    // kirim request
-    const { data } = await axios.post(
-      "https://allinonedownloader.com/system/f7c4d28c5e53c49.php",
-      form,
+    // Step 3: Kirim request untuk download link
+    const response = await axios.post(
+      "https://allinonedownloader.com/system/action.php",
+      new URLSearchParams({
+        token: token,
+        data: encrypted,
+      }),
       {
         headers: {
-          accept: "*/*",
-          cookie: rynn.headers["set-cookie"].join("; "),
-          "user-agent":
-            "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Mobile Safari/537.36",
-          "x-requested-with": "XMLHttpRequests",
-          ...form.getHeaders(),
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116 Safari/537.36",
         },
       }
     );
 
-    // siapkan hasil
-    const result = {
-      type: "post", // default
-      caption: data?.title || "Tanpa judul",
-      videos: [],
-      images: [],
-      audio: null,
-    };
-
-    // deteksi type (story / reel / post)
-    if (url.includes("/stories/")) result.type = "story";
-    else if (url.includes("/reel/")) result.type = "reel";
-    else result.type = "post";
-
-    // parsing media
-    if (data?.medias && Array.isArray(data.medias)) {
-      data.medias.forEach((m) => {
-        if (m.extension?.includes("mp4")) {
-          result.videos.push(m.url);
-        } else if (m.extension?.includes("jpg") || m.extension?.includes("png")) {
-          result.images.push(m.url);
-        } else if (m.extension?.includes("mp3")) {
-          result.audio = m.url;
-        }
-      });
+    if (!response.data) {
+      throw new Error("Response kosong dari server downloader");
     }
 
-    return res.status(200).json(result);
+    res.status(200).json(response.data);
   } catch (err) {
     console.error("IG Downloader error:", err.message);
-    return res.status(500).json({ error: "Gagal memproses URL." });
+    res.status(500).json({ error: err.message });
   }
 }

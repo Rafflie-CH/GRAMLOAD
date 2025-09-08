@@ -125,7 +125,7 @@ export default function Home() {
         <ul className="list-disc ml-6 space-y-2">
           <li>
             <a
-              href="https://tikload.vercel.app"
+              href="https://tikload.rafzhost.xyz"
               className="text-purple-600 font-semibold hover:underline"
             >
               🎵 TikLoad – TikTok Downloader

@@ -2,18 +2,64 @@
 @tailwind components;
 @tailwind utilities;
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+/* Background gradient khas Instagram */
+body {
+  @apply min-h-screen flex items-center justify-center text-gray-800;
+  background: linear-gradient(135deg, #f58529, #dd2a7b, #8134af, #515bd4);
+  background-size: 400% 400%;
+  animation: gradientBG 15s ease infinite;
+  font-family: 'Inter', sans-serif;
 }
-@keyframes slideUp {
+
+/* Animasi background bergerak */
+@keyframes gradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Container utama */
+.container {
+  @apply max-w-lg w-full bg-white/90 rounded-2xl shadow-2xl p-8;
+  animation: fadeIn 1s ease-in-out;
+}
+
+/* Animasi fade in */
+@keyframes fadeIn {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-fade-in {
-  animation: fadeIn 1s ease-in-out forwards;
+/* Title */
+h1 {
+  @apply text-3xl font-bold text-center mb-6;
+  background: linear-gradient(to right, #f58529, #dd2a7b, #8134af, #515bd4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
-.animate-slide-up {
-  animation: slideUp 0.8s ease-out forwards;
+
+/* Input */
+input[type="text"] {
+  @apply w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500;
+  transition: all 0.3s ease;
+}
+input[type="text"]:focus {
+  @apply shadow-lg;
+}
+
+/* Button */
+button {
+  @apply w-full bg-gradient-to-r from-pink-500 via-purple-500 to-orange-400 text-white font-semibold py-3 rounded-lg mt-4;
+  transition: all 0.3s ease;
+}
+button:hover {
+  @apply scale-105 shadow-lg;
+}
+
+/* Footer */
+.footer {
+  @apply text-center text-sm text-gray-700 mt-6;
+}
+.footer a {
+  @apply text-pink-600 font-semibold hover:underline;
 }
